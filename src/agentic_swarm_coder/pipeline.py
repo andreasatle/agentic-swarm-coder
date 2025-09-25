@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import random
+import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from agents import Agent, Runner
 from agents.exceptions import MaxTurnsExceeded
@@ -24,6 +25,7 @@ from .prompts import (
     build_qa_instruction,
     build_qa_prompt,
 )
+from .schemas import QAReview
 
 
 LOGGER = get_logger("pipeline")
@@ -32,6 +34,10 @@ RATE_LIMIT_MAX_RETRIES = 5
 RATE_LIMIT_INITIAL_DELAY = 1.5
 RATE_LIMIT_BACKOFF_MULTIPLIER = 2.0
 RATE_LIMIT_JITTER = 0.5
+_QA_STATUS_PATTERN = re.compile(
+    r"^\s*\**\s*OVERALL_STATUS:\s*(PASS|FAIL)\s*\**\s*$",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -41,6 +47,7 @@ class IterationResult:
     plan_summary: str
     coder_summary: str
     qa_summary: str
+    qa_review: Optional[QAReview]
     test_command: str | None
     test_exit_code: int | None
     test_output: str | None
@@ -63,18 +70,69 @@ class WorkflowResult:
     success: bool
 
 
-def _qa_passed(qa_output: str) -> bool | None:
+def _qa_passed(review: QAReview | None, qa_output: str) -> bool | None:
     """Parse the QA output for an OVERALL_STATUS line."""
 
+    if review is not None:
+        return review.status == "PASS"
+
     for line in reversed(qa_output.strip().splitlines()):
-        text = line.strip().upper()
-        if text.startswith("OVERALL_STATUS:"):
-            status = text.split(":", 1)[1].strip()
+        match = _QA_STATUS_PATTERN.match(line)
+        if match:
+            status = match.group(1).upper()
             if status == "PASS":
                 return True
             if status == "FAIL":
                 return False
     return None
+
+
+def _coerce_qa_review(output: Any) -> QAReview | None:
+    """Best-effort conversion of an agent output into a QAReview object."""
+
+    if isinstance(output, QAReview):
+        return output
+
+    if isinstance(output, str):
+        output = output.strip()
+        if not output:
+            return None
+        try:
+            return QAReview.model_validate_json(output)
+        except ValueError:
+            return None
+
+    try:
+        return QAReview.model_validate(output)  # type: ignore[arg-type]
+    except ValueError:
+        return None
+
+
+def _format_qa_summary(review: QAReview | None, raw_output: Any) -> str:
+    if review is None:
+        return str(raw_output)
+
+    issues_text = "\n- ".join(review.issues)
+    issues_block = f"\nIssues:\n- {issues_text}" if review.issues else ""
+    return f"Status: {review.status}\nSummary: {review.summary}{issues_block}"
+
+
+def _planner_feedback_from_qa(review: QAReview | None, raw_output: Any) -> str:
+    if review is None:
+        return str(raw_output)
+
+    if not review.issues:
+        return f"QA Summary: {review.summary}\nStatus: {review.status}"
+
+    bullet_list = "\n".join(f"- {issue}" for issue in review.issues)
+    return (
+        "QA Summary: "
+        f"{review.summary}\n"
+        "Status: "
+        f"{review.status}\n"
+        "Outstanding issues:\n"
+        f"{bullet_list}"
+    )
 
 
 def _format_test_summary(result: TestRunResult) -> str:
@@ -156,6 +214,7 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
             instructions=qa_prompt,
             mcp_servers=[filesystem_server],
             model_settings=ModelSettings(tool_choice="required"),
+            output_type=QAReview,
         )
 
         LOGGER.info("Starting workflow in workspace %s", settings.workspace)
@@ -184,6 +243,7 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
                         plan_summary="Planner exceeded max turns",
                         coder_summary="",
                         qa_summary="",
+                        qa_review=None,
                         test_command=None,
                         test_exit_code=None,
                         test_output=None,
@@ -214,6 +274,7 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
                         plan_summary=planner_run.final_output,
                         coder_summary="Coder exceeded max turns",
                         qa_summary="",
+                        qa_review=None,
                         test_command=None,
                         test_exit_code=None,
                         test_output=None,
@@ -271,6 +332,7 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
                         plan_summary=planner_run.final_output,
                         coder_summary=coder_run.final_output,
                         qa_summary="QA exceeded max turns",
+                        qa_review=None,
                         test_command=test_result.command,
                         test_exit_code=test_result.exit_code,
                         test_output=test_result.output,
@@ -283,18 +345,21 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
                 reviewer_run.final_output,
             )
 
+            qa_review = _coerce_qa_review(reviewer_run.final_output)
+            qa_summary_text = _format_qa_summary(qa_review, reviewer_run.final_output)
             iterations.append(
                 IterationResult(
                     plan_summary=planner_run.final_output,
                     coder_summary=coder_run.final_output,
-                    qa_summary=reviewer_run.final_output,
+                    qa_summary=qa_summary_text,
+                    qa_review=qa_review,
                     test_command=test_result.command,
                     test_exit_code=test_result.exit_code,
                     test_output=test_result.output,
                 )
             )
 
-            status = _qa_passed(reviewer_run.final_output)
+            status = _qa_passed(qa_review, reviewer_run.final_output)
             if status is True:
                 LOGGER.info("Iteration %d: QA passed; stopping workflow", iteration_index)
                 success = True
@@ -307,7 +372,7 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
                     "Iteration %d: QA output missing OVERALL_STATUS; assuming more work needed",
                     iteration_index,
                 )
-            feedback = reviewer_run.final_output
+            feedback = _planner_feedback_from_qa(qa_review, reviewer_run.final_output)
 
         if not success:
             LOGGER.info("Workflow completed without QA pass after %d iterations", len(iterations))

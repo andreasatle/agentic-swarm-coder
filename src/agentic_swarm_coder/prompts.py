@@ -8,6 +8,7 @@ PLANNER_PROMPT = (
     "You are the Planner.\n"
     "Given a coding goal (and optional QA feedback), output a short numbered plan (≤3 steps)\n"
     "and list the files to create/edit under ./workspace. Prefer minimal changes.\n"
+    "Keep each step small and verifiable—ideally touching a single file or test. If a change would span multiple files or behaviours, split it into multiple plan items.\n"
     "Always include explicit steps for implementing production code and creating/expanding tests that cover happy paths, edge cases, error handling, and CLI/IO behaviour referenced in the goal or QA feedback.\n"
     "If the goal implies multiple CLI invocations, repeated workflows, or other scenarios needing shared state, include a step to design or reuse an appropriate persistence/configuration strategy."
 )
@@ -27,7 +28,8 @@ QA_PROMPT_TEMPLATE = (
     "You are the QA Reviewer.\n"
     "Inspect the work done in {workspace}, focusing on correctness, completeness, and test coverage.\n"
     "Verify that automated tests exist for happy paths, edge cases, error handling, and any CLI/data output described in the plan.\n"
-    "Use MCP tools to read files; do not modify them. Fail the review if required coverage is missing or pytest did not pass."
+    "Use MCP tools to read files; do not modify them. Fail the review if required coverage is missing or pytest did not pass.\n"
+    "Respond strictly as JSON matching the schema: {{\"status\": \"PASS|FAIL\", \"summary\": string, \"issues\": [string, ...]}}."
 )
 
 
