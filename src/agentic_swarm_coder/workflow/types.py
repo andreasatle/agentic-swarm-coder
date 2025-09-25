@@ -57,3 +57,9 @@ def build_iteration_result(
         test_exit_code=test_result.exit_code,
         test_output=test_result.output,
     )
+
+
+def empty_test_result() -> TestRunResult:
+    """Return a placeholder test result for iterations that did not run tests."""
+
+    return TestRunResult(command=None, exit_code=None, output=None)

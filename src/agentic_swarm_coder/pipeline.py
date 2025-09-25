@@ -29,6 +29,7 @@ from .workflow.types import (
     TestRunResult,
     WorkflowResult,
     build_iteration_result,
+    empty_test_result,
 )
 
 LOGGER = get_logger("pipeline")
@@ -97,7 +98,7 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
                         coder_summary="",
                         qa_summary="",
                         qa_review=None,
-                        test_result=TestRunResult(None, None, None),
+                        test_result=empty_test_result(),
                     )
                 )
                 break
@@ -135,11 +136,7 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
                         coder_summary="Coder exceeded max turns",
                         qa_summary="",
                         qa_review=None,
-                        test_result=TestRunResult(
-                            command=None,
-                            exit_code=None,
-                            output=None,
-                        ),
+                        test_result=empty_test_result(),
                     )
                 )
                 break
