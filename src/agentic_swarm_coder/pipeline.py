@@ -186,6 +186,88 @@ async def _run_pytest(workspace: Path) -> TestRunResult:
     )
 
 
+async def _execute_tests(iteration_index: int, workspace: Path) -> TestRunResult:
+    LOGGER.info("Iteration %d: running tests", iteration_index)
+    result = await _run_pytest(workspace)
+    if result.exit_code is None:
+        LOGGER.warning(
+            "Iteration %d: pytest was skipped (%s)",
+            iteration_index,
+            result.output,
+        )
+    elif result.exit_code != 0:
+        LOGGER.info(
+            "Iteration %d: pytest failed with exit code %d",
+            iteration_index,
+            result.exit_code,
+        )
+    else:
+        LOGGER.info("Iteration %d: pytest succeeded", iteration_index)
+    LOGGER.debug(
+        "Iteration %d: pytest output for command '%s':\n%s",
+        iteration_index,
+        result.command or "<not run>",
+        result.output or "<no output>",
+    )
+    return result
+
+
+async def _invoke_qa(
+    reviewer: Agent,
+    iteration_index: int,
+    *,
+    plan_summary: str,
+    coder_summary: str,
+    test_result: TestRunResult,
+):
+    instruction = build_qa_instruction(
+        plan_summary=plan_summary,
+        coder_summary=coder_summary,
+        test_summary=_format_test_summary(test_result),
+    )
+    result = await _run_agent_with_backoff(
+        reviewer,
+        instruction,
+        max_turns=MAX_AGENT_TURNS,
+    )
+    LOGGER.debug(
+        "Iteration %d: QA raw summary:\n%s",
+        iteration_index,
+        result.final_output,
+    )
+    return result
+
+
+def _summarise_qa_output(output: Any, iteration_index: int) -> tuple[QAReview | None, str]:
+    review = _coerce_qa_review(output)
+    summary_text = _format_qa_summary(review, output)
+    LOGGER.debug(
+        "Iteration %d: QA structured summary:\n%s",
+        iteration_index,
+        summary_text,
+    )
+    return review, summary_text
+
+
+def _build_iteration_result(
+    *,
+    plan_summary: str,
+    coder_summary: str,
+    qa_summary: str,
+    qa_review: QAReview | None,
+    test_result: TestRunResult,
+) -> IterationResult:
+    return IterationResult(
+        plan_summary=plan_summary,
+        coder_summary=coder_summary,
+        qa_summary=qa_summary,
+        qa_review=qa_review,
+        test_command=test_result.command,
+        test_exit_code=test_result.exit_code,
+        test_output=test_result.output,
+    )
+
+
 async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
     """Run the agents with an iterative feedback loop until QA passes or limits hit."""
 
@@ -290,39 +372,16 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
                 coder_run.final_output,
             )
 
-            LOGGER.info("Iteration %d: running tests", iteration_index)
-            test_result = await _run_pytest(settings.workspace)
-            if test_result.exit_code is None:
-                LOGGER.warning(
-                    "Iteration %d: pytest was skipped (%s)",
-                    iteration_index,
-                    test_result.output,
-                )
-            elif test_result.exit_code != 0:
-                LOGGER.info(
-                    "Iteration %d: pytest failed with exit code %d",
-                    iteration_index,
-                    test_result.exit_code,
-                )
-            else:
-                LOGGER.info("Iteration %d: pytest succeeded", iteration_index)
-            LOGGER.debug(
-                "Iteration %d: pytest output for command '%s':\n%s",
-                iteration_index,
-                test_result.command or "<not run>",
-                test_result.output or "<no output>",
-            )
+            test_result = await _execute_tests(iteration_index, settings.workspace)
 
             LOGGER.info("Iteration %d: running QA reviewer", iteration_index)
             try:
-                reviewer_run = await _run_agent_with_backoff(
+                reviewer_run = await _invoke_qa(
                     reviewer,
-                    build_qa_instruction(
-                        plan_summary=planner_run.final_output,
-                        coder_summary=coder_run.final_output,
-                        test_summary=_format_test_summary(test_result),
-                    ),
-                    max_turns=MAX_AGENT_TURNS,
+                    iteration_index,
+                    plan_summary=planner_run.final_output,
+                    coder_summary=coder_run.final_output,
+                    test_result=test_result,
                 )
             except MaxTurnsExceeded as exc:
                 LOGGER.error(
@@ -331,34 +390,26 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
                     exc,
                 )
                 iterations.append(
-                    IterationResult(
+                    _build_iteration_result(
                         plan_summary=planner_run.final_output,
                         coder_summary=coder_run.final_output,
                         qa_summary="QA exceeded max turns",
                         qa_review=None,
-                        test_command=test_result.command,
-                        test_exit_code=test_result.exit_code,
-                        test_output=test_result.output,
+                        test_result=test_result,
                     )
                 )
                 break
-            LOGGER.debug(
-                "Iteration %d: QA summary:\n%s",
-                iteration_index,
+            qa_review, qa_summary_text = _summarise_qa_output(
                 reviewer_run.final_output,
+                iteration_index,
             )
-
-            qa_review = _coerce_qa_review(reviewer_run.final_output)
-            qa_summary_text = _format_qa_summary(qa_review, reviewer_run.final_output)
             iterations.append(
-                IterationResult(
+                _build_iteration_result(
                     plan_summary=planner_run.final_output,
                     coder_summary=coder_run.final_output,
                     qa_summary=qa_summary_text,
                     qa_review=qa_review,
-                    test_command=test_result.command,
-                    test_exit_code=test_result.exit_code,
-                    test_output=test_result.output,
+                    test_result=test_result,
                 )
             )
 
