@@ -21,7 +21,7 @@ any QA feedback is fed back into the planner for up to three refinement rounds.
 ## Usage
 
 1. Install dependencies (via `uv sync`, `pip install -e .`, etc.).
-2. Set `WORKSPACE_DIR` (or pass `--workspace`) to a directory outside this project. Optionally set `GOAL` and `AGENTIC_SWARM_LOG_LEVEL` (e.g. `DEBUG`) in your environment or `.env`.
+2. Set `GOAL` and `WORKSPACE_DIR` (or pass the corresponding CLI flags). `WORKSPACE_DIR` must point outside this project. Optionally set `AGENTIC_SWARM_LOG_LEVEL` (e.g. `DEBUG`) in your environment or `.env`.
 3. Run the workflow:
    ```bash
    python main.py --goal "Describe the task here" --workspace /path/to/workspace

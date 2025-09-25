@@ -14,3 +14,4 @@ wheels/
 # Default project directory for the generated code
 workspace/
 rmc.sh
+goal.txt
