@@ -11,6 +11,10 @@ from dotenv import load_dotenv
 
 from .logging import configure_logging
 
+
+class ConfigurationError(ValueError):
+    """Raised when runtime configuration is invalid or incomplete."""
+
 _WORKSPACE_ENV_VAR = "WORKSPACE_DIR"
 _GOAL_ENV_VAR = "GOAL"
 _LOG_LEVEL_ENV_VAR = "AGENTIC_SWARM_LOG_LEVEL"
@@ -31,7 +35,7 @@ def _resolve_workspace(base_dir: Optional[Path], *, allow_from_env: bool = True)
     elif allow_from_env and (env_path := os.getenv(_WORKSPACE_ENV_VAR)):
         workspace = Path(env_path)
     else:
-        raise ValueError(
+        raise ConfigurationError(
             "Workspace path is required. Provide --workspace or set WORKSPACE_DIR."
         )
 
@@ -44,14 +48,14 @@ def _resolve_workspace(base_dir: Optional[Path], *, allow_from_env: bool = True)
 def _validate_workspace_location(workspace: Path) -> None:
     try:
         if workspace.is_relative_to(_PROJECT_ROOT):
-            raise ValueError(
+            raise ConfigurationError(
                 "Workspace directory must be outside the Agentic Swarm Coder project. "
                 "Set --workspace (or WORKSPACE_DIR) to an external path."
             )
     except AttributeError:
         # Python <3.9 fallback—should not trigger in supported versions
         if str(_PROJECT_ROOT) in str(workspace.resolve()):
-            raise ValueError(
+            raise ConfigurationError(
                 "Workspace directory must be outside the Agentic Swarm Coder project."
             )
 
@@ -63,7 +67,7 @@ def load_settings(goal: Optional[str] = None, workspace: Optional[Path] = None) 
     configure_logging(os.getenv(_LOG_LEVEL_ENV_VAR))
     resolved_goal = goal or os.getenv(_GOAL_ENV_VAR)
     if not resolved_goal:
-        raise ValueError(
+        raise ConfigurationError(
             "Goal is required. Provide --goal or set the GOAL environment variable."
         )
     resolved_workspace = _resolve_workspace(workspace)
