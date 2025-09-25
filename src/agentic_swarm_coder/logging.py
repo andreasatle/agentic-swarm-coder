@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 LOGGER_NAME = "agentic_swarm_coder"
 
@@ -52,3 +53,20 @@ def get_logger(name: str | None = None) -> logging.Logger:
     if name:
         return logging.getLogger(f"{LOGGER_NAME}.{name}")
     return logging.getLogger(LOGGER_NAME)
+
+
+def log_event(
+    logger: logging.Logger,
+    level: int,
+    event: str,
+    /,
+    **fields: Any,
+) -> None:
+    """Emit a structured log entry encoded as JSON."""
+
+    payload = {"event": event, **fields}
+    try:
+        message = json.dumps(payload, default=str, sort_keys=True)
+    except TypeError:
+        message = json.dumps({"event": event}, sort_keys=True)
+    logger.log(level, message)

@@ -5,7 +5,9 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-from ..logging import get_logger
+import logging
+
+from ..logging import get_logger, log_event
 from .types import TestRunResult
 
 LOGGER = get_logger("workflow.testing")
@@ -37,27 +39,43 @@ async def run_pytest(workspace: Path) -> TestRunResult:
 
 
 async def execute_tests(iteration_index: int, workspace: Path) -> TestRunResult:
-    LOGGER.info("Iteration %d: running tests", iteration_index)
+    log_event(
+        LOGGER,
+        logging.INFO,
+        "iteration.tests.start",
+        iteration=iteration_index,
+    )
     result = await run_pytest(workspace)
     if result.exit_code is None:
-        LOGGER.warning(
-            "Iteration %d: pytest was skipped (%s)",
-            iteration_index,
-            result.output,
+        log_event(
+            LOGGER,
+            logging.WARNING,
+            "iteration.tests.skipped",
+            iteration=iteration_index,
+            output=result.output,
         )
     elif result.exit_code != 0:
-        LOGGER.info(
-            "Iteration %d: pytest failed with exit code %d",
-            iteration_index,
-            result.exit_code,
+        log_event(
+            LOGGER,
+            logging.INFO,
+            "iteration.tests.failed",
+            iteration=iteration_index,
+            exit_code=result.exit_code,
         )
     else:
-        LOGGER.info("Iteration %d: pytest succeeded", iteration_index)
-    LOGGER.debug(
-        "Iteration %d: pytest output for command '%s':\n%s",
-        iteration_index,
-        result.command or "<not run>",
-        result.output or "<no output>",
+        log_event(
+            LOGGER,
+            logging.INFO,
+            "iteration.tests.passed",
+            iteration=iteration_index,
+        )
+    log_event(
+        LOGGER,
+        logging.DEBUG,
+        "iteration.tests.output",
+        iteration=iteration_index,
+        command=result.command,
+        output=result.output,
     )
     return result
 
