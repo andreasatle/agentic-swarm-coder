@@ -1,0 +1,24 @@
+[project]
+name = "agentic-swarm-coder"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp>=1.14.1",
+    "openai-agents>=0.3.2",
+    "python-dotenv>=1.1.1",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+agentic-swarm-coder = "agentic_swarm_coder.app:main"
+
+[tool.uv]
+package = true
