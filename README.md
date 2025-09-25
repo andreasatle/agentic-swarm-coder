@@ -27,6 +27,8 @@ any QA feedback is fed back into the planner for up to three refinement rounds.
    python main.py --goal "Describe the task here"
    # or via the installed entry point
    agentic-swarm-coder --goal "Describe the task here"
+   # or read a longer goal from a file
+   python main.py --goal "$(cat goal.txt)"
    ```
 
 The CLI prints a plan from the planner agent, the coder summary, and the QA review.
