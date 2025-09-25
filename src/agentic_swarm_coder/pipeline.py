@@ -26,6 +26,7 @@ from .prompts import (
     build_qa_prompt,
 )
 from .schemas import QAReview
+from .scaffold import ensure_workspace_initialized
 
 
 LOGGER = get_logger("pipeline")
@@ -190,6 +191,8 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
 
     coder_prompt = build_coder_prompt(settings.workspace)
     qa_prompt = build_qa_prompt(settings.workspace)
+
+    await ensure_workspace_initialized(settings.workspace)
 
     async with MCPServerStdio(
         name="filesystem",

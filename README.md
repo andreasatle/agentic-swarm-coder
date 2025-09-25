@@ -21,14 +21,14 @@ any QA feedback is fed back into the planner for up to three refinement rounds.
 ## Usage
 
 1. Install dependencies (via `uv sync`, `pip install -e .`, etc.).
-2. Optionally set `GOAL`, `WORKSPACE_DIR`, and/or `AGENTIC_SWARM_LOG_LEVEL` (e.g. `DEBUG`) in your environment or `.env`.
+2. Set `WORKSPACE_DIR` (or pass `--workspace`) to a directory outside this project. Optionally set `GOAL` and `AGENTIC_SWARM_LOG_LEVEL` (e.g. `DEBUG`) in your environment or `.env`.
 3. Run the workflow:
    ```bash
-   python main.py --goal "Describe the task here"
+   python main.py --goal "Describe the task here" --workspace /path/to/workspace
    # or via the installed entry point
-   agentic-swarm-coder --goal "Describe the task here"
+   agentic-swarm-coder --goal "Describe the task here" --workspace /path/to/workspace
    # or read a longer goal from a file
-   python main.py --goal "$(cat goal.txt)"
+   python main.py --goal "$(cat goal.txt)" --workspace /path/to/workspace
    ```
 
 The CLI prints a plan from the planner agent, the coder summary, and the QA review.

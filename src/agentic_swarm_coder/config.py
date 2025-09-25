@@ -11,8 +11,6 @@ from dotenv import load_dotenv
 
 from .logging import configure_logging
 
-#_DEFAULT_GOAL = "Add add(a,b) in src/add.py and a pytest in tests/test_add.py"
-
 _DEFAULT_GOAL = """
 Build a small command-line “task timer” utility inside the workspace.
 
@@ -40,6 +38,7 @@ Requirements:
 _WORKSPACE_ENV_VAR = "WORKSPACE_DIR"
 _GOAL_ENV_VAR = "GOAL"
 _LOG_LEVEL_ENV_VAR = "AGENTIC_SWARM_LOG_LEVEL"
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 @dataclass(frozen=True)
@@ -56,10 +55,29 @@ def _resolve_workspace(base_dir: Optional[Path], *, allow_from_env: bool = True)
     elif allow_from_env and (env_path := os.getenv(_WORKSPACE_ENV_VAR)):
         workspace = Path(env_path)
     else:
-        workspace = Path(__file__).resolve().parents[2] / "workspace"
+        raise ValueError(
+            "Workspace path is required. Provide --workspace or set WORKSPACE_DIR."
+        )
 
+    workspace = workspace.expanduser().resolve()
+    _validate_workspace_location(workspace)
     workspace.mkdir(parents=True, exist_ok=True)
     return workspace
+
+
+def _validate_workspace_location(workspace: Path) -> None:
+    try:
+        if workspace.is_relative_to(_PROJECT_ROOT):
+            raise ValueError(
+                "Workspace directory must be outside the Agentic Swarm Coder project. "
+                "Set --workspace (or WORKSPACE_DIR) to an external path."
+            )
+    except AttributeError:
+        # Python <3.9 fallback—should not trigger in supported versions
+        if str(_PROJECT_ROOT) in str(workspace.resolve()):
+            raise ValueError(
+                "Workspace directory must be outside the Agentic Swarm Coder project."
+            )
 
 
 def load_settings(goal: Optional[str] = None, workspace: Optional[Path] = None) -> RuntimeSettings:
