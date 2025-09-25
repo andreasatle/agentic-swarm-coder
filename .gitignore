@@ -10,3 +10,6 @@ wheels/
 .venv
 .env
 .python-version
+
+# Default project directory for the generated code
+workspace/
