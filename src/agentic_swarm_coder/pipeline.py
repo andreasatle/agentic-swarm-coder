@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import logging
 
-from agents import Agent
 from agents.exceptions import MaxTurnsExceeded
 from agents.mcp import MCPServerStdio
 
 from .config import RuntimeSettings
 from .instrumentation import (
-    log_agent_execution,
     log_iteration_status,
     log_workflow_completion,
     log_workflow_success,
@@ -18,7 +16,6 @@ from .instrumentation import (
 from .logging import get_logger, log_event
 from .scaffold import ensure_workspace_initialized
 from .agent_factory import create_coder, create_planner, create_qa_reviewer
-from .backoff import run_with_backoff
 from .prompts.coder import build_coder_instruction, build_coder_prompt
 from .prompts.planner import build_planner_instruction
 from .prompts.qa import build_qa_instruction, build_qa_prompt
@@ -31,9 +28,14 @@ from .results import (
 )
 from .test_runner import execute_tests, format_test_summary
 from .planner_utils import summarise_plan
+from .agent_runners import make_coder_runner, make_planner_runner, make_qa_runner
 
 LOGGER = get_logger("pipeline")
 MAX_AGENT_TURNS = 20
+
+_RUN_PLANNER_AGENT = make_planner_runner(LOGGER, MAX_AGENT_TURNS)
+_RUN_CODER_AGENT = make_coder_runner(LOGGER, MAX_AGENT_TURNS)
+_RUN_QA_AGENT = make_qa_runner(LOGGER, MAX_AGENT_TURNS)
 
 
 async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
@@ -73,7 +75,7 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
 
         for iteration_index in range(1, settings.max_iterations + 1):
             try:
-                planner_run = await _run_planner_agent(
+                planner_run = await _RUN_PLANNER_AGENT(
                     iteration_index=iteration_index,
                     agent=planner,
                     instruction=build_planner_instruction(
@@ -97,7 +99,7 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
             plan_summary, plan_complete = summarise_plan(planner_run.final_output)
 
             try:
-                coder_run = await _run_coder_agent(
+                coder_run = await _RUN_CODER_AGENT(
                     iteration_index=iteration_index,
                     agent=coder,
                     instruction=build_coder_instruction(plan_summary),
@@ -118,7 +120,7 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
             test_result = await execute_tests(iteration_index, settings.workspace)
 
             try:
-                reviewer_run = await _run_qa_agent(
+                reviewer_run = await _RUN_QA_AGENT(
                     iteration_index=iteration_index,
                     agent=reviewer,
                     instruction=build_qa_instruction(
@@ -180,58 +182,3 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
         )
 
     return WorkflowResult(iterations=iterations, success=success)
-
-
-async def _invoke_with_backoff(agent: Agent, instruction: str):
-    return await run_with_backoff(agent, instruction, max_turns=MAX_AGENT_TURNS)
-
-
-@log_agent_execution(
-    logger=LOGGER,
-    agent_name="planner",
-    start_event="iteration.plan.request",
-    result_event="iteration.plan.result",
-    error_event="iteration.plan.max_turns",
-    handled_exceptions=(MaxTurnsExceeded,),
-)
-async def _run_planner_agent(
-    *,
-    iteration_index: int,
-    agent: Agent,
-    instruction: str,
-):
-    return await _invoke_with_backoff(agent, instruction)
-
-
-@log_agent_execution(
-    logger=LOGGER,
-    agent_name="coder",
-    start_event="iteration.coder.start",
-    result_event="iteration.coder.summary",
-    error_event="iteration.coder.max_turns",
-    handled_exceptions=(MaxTurnsExceeded,),
-)
-async def _run_coder_agent(
-    *,
-    iteration_index: int,
-    agent: Agent,
-    instruction: str,
-):
-    return await _invoke_with_backoff(agent, instruction)
-
-
-@log_agent_execution(
-    logger=LOGGER,
-    agent_name="qa",
-    start_event="iteration.qa.start",
-    include_output=False,
-    error_event="iteration.qa.max_turns",
-    handled_exceptions=(MaxTurnsExceeded,),
-)
-async def _run_qa_agent(
-    *,
-    iteration_index: int,
-    agent: Agent,
-    instruction: str,
-):
-    return await _invoke_with_backoff(agent, instruction)
