@@ -1,0 +1,18 @@
+Build a small command-line “task timer” utility.
+
+Requirements:
+1. Create `src/task_timer.py` with:
+   - A `TaskTimer` class that can:
+     • `start(task_name)` → start timing a task.
+     • `stop()` → stop the current task and accumulate elapsed time.
+     • `to_report()` → return a JSON-serializable dict of `{task_name: total_seconds}`.
+   - Raise a `RuntimeError` if `stop()` is called without a matching `start()`.
+
+2. Add `src/cli.py` exposing a CLI with these commands:
+   - `task-timer start <name>` → start timing a task.
+   - `task-timer stop` → stop timing the current task.
+   - `task-timer report --format=json|table` → print either raw JSON from `to_report()` or an ASCII table.
+
+3. Document usage in `README.md`, including an example CLI session.
+
+4. Ensure the CLI entry point is wired up in `pyproject.toml` with console script `task-timer`.

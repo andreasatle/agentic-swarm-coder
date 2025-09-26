@@ -19,6 +19,7 @@ CODER_PROMPT_TEMPLATE = (
     "  • Failure/error conditions\n"
     "  • Edge cases\n"
     "  • CLI entry points (if applicable)\n"
+    "  • Persistence and I/O if applicable\n"
     "- Ensure tests are runnable by `pytest` from the project root.\n"
     "- Dependency policy:\n"
     "  • Do not add imports from external packages unless explicitly listed in the plan.\n"

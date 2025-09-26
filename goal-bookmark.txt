@@ -1,0 +1,19 @@
+Build a small command-line “note manager” utility inside the workspace.
+
+Requirements:
+1. Create `workspace/src/notes.py` with:
+   - A `NoteDB` class that can:
+     • `add(note_id, text)` → add a new note.
+     • `list_all()` → return all notes.
+     • `delete(note_id)` → remove a note by id.
+   - Persist state to `workspace/notes.json` (create if missing).
+   - Raise `ValueError` if a duplicate id is added or a note is deleted that doesn’t exist.
+
+2. Add `workspace/src/cli.py` exposing a CLI with these commands:
+   - `note add <id> "<text>"` → add a note.
+   - `note list` → list all notes.
+   - `note delete <id>` → delete a note.
+
+3. Document usage in `workspace/README.md` with an example CLI session.
+
+4. Update `workspace/pyproject.toml` with a console script entry: `note`.
