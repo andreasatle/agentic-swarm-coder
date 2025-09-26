@@ -10,17 +10,29 @@ from .config import RuntimeSettings, load_settings
 from .pipeline import IterationResult, WorkflowResult, execute_workflow
 
 
-async def run_async(goal: Optional[str] = None, workspace: Optional[Path] = None) -> WorkflowResult:
+async def run_async(
+    goal: str,
+    workspace: Path,
+    *,
+    max_iterations: Optional[int] = None,
+) -> WorkflowResult:
     """Run the workflow asynchronously and return the collected results."""
 
-    settings = load_settings(goal=goal, workspace=workspace)
+    settings = load_settings(goal=goal, workspace=workspace, max_iterations=max_iterations)
     return await execute_workflow(settings)
 
 
-def run(goal: Optional[str] = None, workspace: Optional[Path] = None) -> WorkflowResult:
+def run(
+    goal: str,
+    workspace: Path,
+    *,
+    max_iterations: Optional[int] = None,
+) -> WorkflowResult:
     """Synchronous helper that runs the async workflow via ``asyncio.run``."""
 
-    return asyncio.run(run_async(goal=goal, workspace=workspace))
+    return asyncio.run(
+        run_async(goal=goal, workspace=workspace, max_iterations=max_iterations)
+    )
 
 
 def format_cli_output(result: WorkflowResult) -> str:
@@ -59,8 +71,13 @@ def _format_iteration_test_output(iteration: IterationResult) -> str:
     return f"Command: {command}\nStatus: {status}\nOutput:\n{output}\n"
 
 
-def main(goal: Optional[str] = None, workspace: Optional[Path] = None) -> None:
+def main(
+    goal: str,
+    workspace: Path,
+    *,
+    max_iterations: Optional[int] = None,
+) -> None:
     """Entry point for the CLI script."""
 
-    result = run(goal=goal, workspace=workspace)
+    result = run(goal=goal, workspace=workspace, max_iterations=max_iterations)
     print(format_cli_output(result))

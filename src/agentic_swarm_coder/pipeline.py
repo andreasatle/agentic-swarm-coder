@@ -28,7 +28,6 @@ from .schemas import PlannerPlan
 
 LOGGER = get_logger("pipeline")
 MAX_AGENT_TURNS = 20
-MAX_ITERATIONS = 2
 
 
 async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
@@ -66,7 +65,7 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
         feedback: str | None = None
         success = False
 
-        for iteration_index in range(1, MAX_ITERATIONS + 1):
+        for iteration_index in range(1, settings.max_iterations + 1):
             log_event(
                 LOGGER,
                 logging.INFO,
@@ -212,7 +211,7 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
                     logging.INFO,
                     "workflow.success",
                     iteration=iteration_index,
-                    total_iterations=len(iterations) + 1,
+                    total_iterations=len(iterations),
                 )
                 success = True
                 break

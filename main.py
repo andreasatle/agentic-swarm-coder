@@ -14,20 +14,29 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--goal",
         type=str,
-        help="Override the goal to send to the planner agent.",
+        required=True,
+        help="Goal description to send to the planner agent.",
     )
     parser.add_argument(
         "--workspace",
         type=Path,
-        help="Optional path to the workspace directory.",
+        required=True,
+        help="Path to the workspace directory.",
+    )
+    parser.add_argument(
+        "-n",
+        "--iterations",
+        type=int,
+        default=5,
+        help="Maximum planner/coder/QA iterations (default: 5).",
     )
     return parser.parse_args()
 
 
-def cli(goal: Optional[str] = None, workspace: Optional[Path] = None) -> None:
-    run_workflow(goal=goal, workspace=workspace)
+def cli(goal: str, workspace: Path, iterations: int = 5) -> None:
+    run_workflow(goal=goal, workspace=workspace, max_iterations=iterations)
 
 
 if __name__ == "__main__":
     arguments = parse_args()
-    cli(goal=arguments.goal, workspace=arguments.workspace)
+    cli(goal=arguments.goal, workspace=arguments.workspace, iterations=arguments.iterations)
