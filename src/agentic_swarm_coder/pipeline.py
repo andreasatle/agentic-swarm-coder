@@ -24,10 +24,11 @@ from .results import (
     empty_test_result,
 )
 from .test_runner import execute_tests, format_test_summary
+from .schemas import PlannerPlan
 
 LOGGER = get_logger("pipeline")
 MAX_AGENT_TURNS = 20
-MAX_ITERATIONS = 5
+MAX_ITERATIONS = 2
 
 
 async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
@@ -88,6 +89,7 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
                 iterations.append(
                     build_iteration_result(
                         plan_summary="Planner exceeded max turns",
+                        plan_complete=False,
                         coder_summary="",
                         qa_summary="",
                         qa_review=None,
@@ -104,6 +106,8 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
                 content=planner_run.final_output,
             )
 
+            plan_summary, plan_complete = _summarise_plan(planner_run.final_output)
+
             log_event(
                 LOGGER,
                 logging.INFO,
@@ -113,7 +117,7 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
             try:
                 coder_run = await _invoke_with_backoff(
                     coder,
-                    build_coder_instruction(planner_run.final_output),
+                    build_coder_instruction(plan_summary),
                 )
             except MaxTurnsExceeded as exc:
                 log_event(
@@ -125,7 +129,8 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
                 )
                 iterations.append(
                     build_iteration_result(
-                        plan_summary=planner_run.final_output,
+                        plan_summary=plan_summary,
+                        plan_complete=plan_complete,
                         coder_summary="Coder exceeded max turns",
                         qa_summary="",
                         qa_review=None,
@@ -153,7 +158,7 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
                 reviewer_run = await _invoke_with_backoff(
                     reviewer,
                     build_qa_instruction(
-                        plan_summary=planner_run.final_output,
+                        plan_summary=plan_summary,
                         coder_summary=coder_run.final_output,
                         test_summary=format_test_summary(test_result),
                     ),
@@ -168,7 +173,8 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
                 )
                 iterations.append(
                     build_iteration_result(
-                        plan_summary=planner_run.final_output,
+                        plan_summary=plan_summary,
+                        plan_complete=plan_complete,
                         coder_summary=coder_run.final_output,
                         qa_summary="QA exceeded max turns",
                         qa_review=None,
@@ -183,7 +189,8 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
             )
             iterations.append(
                 build_iteration_result(
-                    plan_summary=planner_run.final_output,
+                    plan_summary=plan_summary,
+                    plan_complete=plan_complete,
                     coder_summary=coder_run.final_output,
                     qa_summary=qa_summary_text,
                     qa_review=qa_review,
@@ -247,3 +254,16 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
 
 async def _invoke_with_backoff(agent: Agent, instruction: str):
     return await run_with_backoff(agent, instruction, max_turns=MAX_AGENT_TURNS)
+
+
+def _summarise_plan(output: object) -> tuple[str, bool]:
+    """Convert planner output into a textual summary and completion flag."""
+
+    if isinstance(output, PlannerPlan):
+        summary_text = output.summary()
+        return (summary_text or "Planner returned an empty plan.", output.complete)
+
+    text = str(output).strip() if output is not None else ""
+    if not text:
+        return ("Planner returned no output.", False)
+    return text, False

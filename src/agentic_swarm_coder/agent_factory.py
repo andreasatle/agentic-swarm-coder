@@ -6,7 +6,7 @@ from agents import Agent
 from agents.mcp import MCPServerStdio
 from agents.model_settings import ModelSettings
 
-from .schemas import QAReview
+from .schemas import PlannerPlan, QAReview
 from .prompts import PLANNER_PROMPT
 
 __all__ = [
@@ -17,7 +17,11 @@ __all__ = [
 
 
 def create_planner() -> Agent:
-    return Agent(name="Planner", instructions=PLANNER_PROMPT)
+    return Agent(
+        name="Planner",
+        instructions=PLANNER_PROMPT,
+        output_type=PlannerPlan,
+    )
 
 
 def create_coder(instructions: str, filesystem_server: MCPServerStdio) -> Agent:

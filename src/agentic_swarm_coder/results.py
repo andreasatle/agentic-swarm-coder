@@ -22,6 +22,7 @@ class IterationResult:
     """Container for the textual outputs produced in a single loop iteration."""
 
     plan_summary: str
+    plan_complete: bool
     coder_summary: str
     qa_summary: str
     qa_review: Optional[QAReview]
@@ -41,6 +42,7 @@ class WorkflowResult:
 def build_iteration_result(
     *,
     plan_summary: str,
+    plan_complete: bool,
     coder_summary: str,
     qa_summary: str,
     qa_review: QAReview | None,
@@ -50,6 +52,7 @@ def build_iteration_result(
 
     return IterationResult(
         plan_summary=plan_summary,
+        plan_complete=plan_complete,
         coder_summary=coder_summary,
         qa_summary=qa_summary,
         qa_review=qa_review,

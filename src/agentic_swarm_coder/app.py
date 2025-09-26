@@ -33,6 +33,7 @@ def format_cli_output(result: WorkflowResult) -> str:
                 f"\n=== ITERATION {index} ===\n",
                 "--- PLAN ---\n",
                 f"{iteration.plan_summary}\n",
+                f"\nPlanner marked goal complete: {'YES' if iteration.plan_complete else 'NO'}\n",
                 "\n--- CODER SUMMARY ---\n",
                 f"{iteration.coder_summary}\n",
                 "\n--- TEST RESULTS ---\n",
