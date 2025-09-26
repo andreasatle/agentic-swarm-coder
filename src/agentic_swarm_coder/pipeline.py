@@ -19,7 +19,6 @@ from .prompts.qa import build_qa_instruction, build_qa_prompt
 from .qa_utils import planner_feedback, qa_passed, summarise_output
 from .results import (
     IterationResult,
-    TestRunResult,
     WorkflowResult,
     build_iteration_result,
     empty_test_result,
