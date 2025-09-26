@@ -8,19 +8,21 @@ Requirements:
      • `is_valid(row, col, num)` → check if placing a number is legal.
      • `place(row, col, num)` → place a number (raise ValueError if illegal).
      • `is_complete()` → check if the board is fully and correctly solved.
-   - Optionally a `generate()` method to create a new valid puzzle.
+   - A solver method that can fill a valid puzzle to completion.
+   - A generator method that produces a new valid puzzle with a unique solution.
+   - Note: Obtaining and verifying valid Sudoku puzzles is tricky; tests must confirm that generated puzzles are solvable and unique.
 
-2. Add `src/gui.py` with a simple graphical interface (use `tkinter` or `pygame`):
+2. Add `src/gui.py` with a simple graphical interface (tkinter or pygame):
    - Display the Sudoku board in a 9×9 grid.
    - Allow the user to click/select a cell and type a number.
    - Highlight errors (illegal moves) in red.
-   - Provide a “New Game” button to load a fresh puzzle.
-   - Provide a “Check Solution” button to validate the board.
+   - Provide a “New Game” button to generate a fresh valid puzzle.
+   - Provide a “Check Solution” button to validate the current board.
 
 3. Add a command-line entry in `src/cli.py`:
    - `sudoku play` → launch the GUI.
    - `sudoku solve <puzzle_file>` → read a puzzle from file and solve it in the console.
 
-4. Document usage in `README.md`, including screenshots or ASCII diagrams of the board.
+4. Write documentation in `README.md`, including installation instructions, an example CLI session, and screenshots of the GUI.
 
 5. Update `pyproject.toml` with a console script entry: `sudoku`.

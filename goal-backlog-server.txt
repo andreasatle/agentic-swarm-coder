@@ -1,0 +1,29 @@
+Goal: Build a Task Backlog MCP Server
+
+Objective:
+Implement an MCP server named `task-backlog` that manages a simple JIRA-like task backlog for an agentic coding swarm.
+
+Requirements:
+1. Task model
+   - Fields: id (UUID), description (str), priority (int), status (open|in_progress|done).
+   - Use Pydantic for type safety.
+
+2. MCP methods
+   - add_task(description: str, priority: int = 0) -> Task
+   - list_tasks() -> List[Task] (sorted by priority, then id)
+   - get_next() -> Task | None (highest priority open task)
+   - update_task(id: str, status: str) -> Task
+
+3. Implementation details
+   - Use mcp.server.MCPServer as the framework.
+   - Keep state in memory for now (later extension: SQLite).
+   - Ensure JSON-serializable responses.
+   - Enforce validation: reject invalid statuses, handle missing task ids gracefully.
+
+4. Execution
+   - Run the server from CLI (python backlog_server.py).
+   - Expose methods so the Scheduler agent can connect via MCP and pull tasks.
+
+5. Extensibility (stretch goal)
+   - Add support for reprioritization (reprioritize(id, new_priority)).
+   - Add optional tags/dependencies.

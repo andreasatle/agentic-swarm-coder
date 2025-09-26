@@ -1,0 +1,84 @@
+# TaskTimer CLI & Implementation Improvements
+
+This document describes improvements to the existing TaskTimer implementation.  
+The original CLI (`cli.py`) and TaskTimer (`task_timer.py`) are already implemented.  
+These improvements can be applied by the swarm coder to refactor or extend the code.
+
+---
+
+## 1. Persistence of State
+Currently the timer resets each run. Add simple JSON file persistence:
+
+- Save elapsed time and running state to `~/.tasktimer_state.json`.
+- Load state on initialization.
+
+Example functions:
+```python
+import os, json
+
+STATE_FILE = os.path.expanduser("~/.tasktimer_state.json")
+
+def save_state(timer: TaskTimer):
+    data = {
+        "elapsed": timer._elapsed,
+        "running": timer._running,
+        "start": timer._start_time
+    }
+    with open(STATE_FILE, "w") as f:
+        json.dump(data, f)
+
+def load_state(timer: TaskTimer):
+    try:
+        with open(STATE_FILE) as f:
+            data = json.load(f)
+        timer._elapsed = data.get("elapsed", 0.0)
+        timer._running = data.get("running", False)
+        timer._start_time = data.get("start")
+    except FileNotFoundError:
+        pass
+```
+
+Call `load_state()` in `TaskTimer.__init__()` and `save_state()` in `start()` and `stop()`.
+
+---
+
+## 2. Multiple Task Support
+Extend `TaskTimer` to support tracking multiple tasks:
+
+- Store `self._tasks: Dict[str, float]` where key = task name, value = elapsed seconds.
+- Allow `start(task_name)` and `stop(task_name)`.
+- Track `self._current_task` to know which is running.
+- CLI gains `--task NAME` argument for `start` and `stop`.
+
+---
+
+## 3. CLI Enhancements
+- Add `--task NAME` argument to `start` and `stop` subcommands.
+- Add `--state-file PATH` option to override persistence file location.
+
+---
+
+## 4. Testing Hooks
+For better testability:
+- Add `time_provider: Callable[[], float] = time.time` to `TaskTimer.__init__`.
+- Replace calls to `time.time()` with `self._time_provider()`.
+
+This allows injecting fake clocks during testing.
+
+---
+
+## 5. Exit Codes & CLI polish
+- Ensure `sys.exit(0)` is returned on successful runs.
+- Keep `sys.exit(2)` for errors.
+
+---
+
+## 6. Summary of Improvements
+- ✅ Persistence across runs via JSON state file.
+- ✅ Support for multiple named tasks.
+- ✅ CLI options for `--task` and `--state-file`.
+- ✅ Testing hooks with injectable clock.
+- ✅ Clear exit codes.
+
+These changes evolve the TaskTimer from a single-use stopwatch into a more durable,
+multi-task, JIRA-style tracker while keeping the CLI simple and script-friendly.
