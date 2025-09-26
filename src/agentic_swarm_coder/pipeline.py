@@ -2,11 +2,19 @@
 
 from __future__ import annotations
 
+import dataclasses
 import logging
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 from agents import Agent
 from agents.exceptions import MaxTurnsExceeded
 from agents.mcp import MCPServerStdio
+
+try:
+    from pydantic import BaseModel  # type: ignore
+except ImportError:  # pragma: no cover - fallback for optional dependency
+    BaseModel = None  # type: ignore[misc,assignment]
 
 from .config import RuntimeSettings
 from .logging import get_logger, log_event
@@ -28,6 +36,7 @@ from .schemas import PlannerPlan
 
 LOGGER = get_logger("pipeline")
 MAX_AGENT_TURNS = 20
+_SERIALIZATION_MAX_DEPTH = 4
 
 
 async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
@@ -104,6 +113,11 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
                 iteration=iteration_index,
                 content=planner_run.final_output,
             )
+            _log_agent_run_details(
+                iteration_index,
+                "planner",
+                planner_run,
+            )
 
             plan_summary, plan_complete = _summarise_plan(planner_run.final_output)
 
@@ -143,6 +157,11 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
                 "iteration.coder.summary",
                 iteration=iteration_index,
                 content=coder_run.final_output,
+            )
+            _log_agent_run_details(
+                iteration_index,
+                "coder",
+                coder_run,
             )
 
             test_result = await execute_tests(iteration_index, settings.workspace)
@@ -185,6 +204,11 @@ async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
             qa_review, qa_summary_text = summarise_output(
                 reviewer_run.final_output,
                 iteration_index,
+            )
+            _log_agent_run_details(
+                iteration_index,
+                "qa",
+                reviewer_run,
             )
             iterations.append(
                 build_iteration_result(
@@ -266,3 +290,97 @@ def _summarise_plan(output: object) -> tuple[str, bool]:
     if not text:
         return ("Planner returned no output.", False)
     return text, False
+
+
+def _log_agent_run_details(
+    iteration_index: int,
+    agent_name: str,
+    run_result: Any,
+) -> None:
+    """Emit a structured transcript log for an agent run when available."""
+
+    if run_result is None:
+        log_event(
+            LOGGER,
+            logging.DEBUG,
+            "iteration.agent.transcript",
+            iteration=iteration_index,
+            agent=agent_name,
+            note="Run result missing; nothing to log",
+        )
+        return
+
+    payload: dict[str, Any] = {"agent": agent_name}
+
+    final_output = getattr(run_result, "final_output", None)
+    if final_output is not None:
+        payload["final_output"] = _serialise_for_logging(final_output)
+
+    for attr in ("messages", "turns", "history", "steps", "response"):
+        value = getattr(run_result, attr, None)
+        if value:
+            payload[attr] = _serialise_for_logging(value)
+
+    tool_calls = getattr(run_result, "tool_calls", None)
+    if tool_calls:
+        payload["tool_calls"] = _serialise_for_logging(tool_calls)
+
+    metadata = getattr(run_result, "metadata", None)
+    if metadata:
+        payload["metadata"] = _serialise_for_logging(metadata)
+
+    if len(payload) <= 1:
+        payload["repr"] = repr(run_result)
+
+    log_event(
+        LOGGER,
+        logging.DEBUG,
+        "iteration.agent.transcript",
+        iteration=iteration_index,
+        **payload,
+    )
+
+
+def _serialise_for_logging(value: Any, *, depth: int = 0) -> Any:
+    """Best-effort conversion of complex objects for JSON logging."""
+
+    if depth >= _SERIALIZATION_MAX_DEPTH:
+        return repr(value)
+
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+
+    if isinstance(value, Mapping):
+        return {
+            str(key): _serialise_for_logging(item, depth=depth + 1)
+            for key, item in value.items()
+        }
+
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return [_serialise_for_logging(item, depth=depth + 1) for item in value]
+
+    if dataclasses.is_dataclass(value):
+        return _serialise_for_logging(dataclasses.asdict(value), depth=depth + 1)
+
+    if BaseModel is not None and isinstance(value, BaseModel):  # type: ignore[arg-type]
+        try:
+            model_dict = value.model_dump()
+        except Exception:  # pragma: no cover - defensive
+            model_dict = value.dict() if hasattr(value, "dict") else repr(value)
+        return _serialise_for_logging(model_dict, depth=depth + 1)
+
+    model_dump = getattr(value, "model_dump", None)
+    if callable(model_dump):
+        try:
+            dumped = model_dump()
+        except Exception:  # pragma: no cover - defensive
+            dumped = None
+        if dumped is not None:
+            return _serialise_for_logging(dumped, depth=depth + 1)
+
+    if hasattr(value, "__dict__"):
+        public = {k: v for k, v in vars(value).items() if not k.startswith("_")}
+        if public:
+            return _serialise_for_logging(public, depth=depth + 1)
+
+    return repr(value)

@@ -18,6 +18,8 @@ class ConfigurationError(ValueError):
 _WORKSPACE_ENV_VAR = "WORKSPACE_DIR"
 _GOAL_ENV_VAR = "GOAL"
 _LOG_LEVEL_ENV_VAR = "AGENTIC_SWARM_LOG_LEVEL"
+_LOG_FILE_ENV_VAR = "AGENTIC_SWARM_LOG_FILE"
+_LOG_FILE_LEVEL_ENV_VAR = "AGENTIC_SWARM_LOG_FILE_LEVEL"
 _MAX_ITERATIONS_ENV_VAR = "AGENTIC_SWARM_MAX_ITERATIONS"
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -71,7 +73,11 @@ def load_settings(
     """Resolve runtime settings from provided parameters and environment variables."""
 
     load_dotenv()  # Allows .env values to override defaults
-    configure_logging(os.getenv(_LOG_LEVEL_ENV_VAR))
+    configure_logging(
+        os.getenv(_LOG_LEVEL_ENV_VAR),
+        log_file=os.getenv(_LOG_FILE_ENV_VAR),
+        file_level=os.getenv(_LOG_FILE_LEVEL_ENV_VAR),
+    )
     resolved_goal = goal or os.getenv(_GOAL_ENV_VAR)
     if not resolved_goal:
         raise ConfigurationError(

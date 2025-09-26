@@ -69,6 +69,9 @@ python main.py --goal "$(cat goal.txt)" --workspace /tmp/project -n 3
 
 # via the installed entry point (after `uv sync` or `pip install -e .`)
 agentic-swarm-coder --goal "Refactor module" --workspace ~/Projects/WorkSpace
+
+# write detailed transcripts to disk while keeping console output concise
+python main.py --goal "Debug flaky tests" --workspace /tmp/project --log-file ~/logs/swarm-debug.log
 ```
 
 Keep the workspace outside of the Agentic Swarm Coder repository to avoid
@@ -83,7 +86,12 @@ CLI or when embedding the workflow):
 - `GOAL` – default goal text if not supplied programmatically
 - `WORKSPACE_DIR` – default workspace path
 - `AGENTIC_SWARM_LOG_LEVEL` – log level (`DEBUG`, `INFO`, etc.)
+- `AGENTIC_SWARM_LOG_FILE` – optional path for full JSON logs of every agent turn
+- `AGENTIC_SWARM_LOG_FILE_LEVEL` – log level for the file handler (defaults to `DEBUG`)
 - `AGENTIC_SWARM_MAX_ITERATIONS` – maximum iteration count (must be ≥ 1)
+
+The CLI flags `--log-file` and `--log-file-level` set the corresponding
+environment variables automatically.
 
 Environment variables are processed in `.env` as well, courtesy of `python-dotenv`.
 
@@ -106,8 +114,9 @@ Environment variables are processed in `.env` as well, courtesy of `python-doten
 - Run `uv run pytest -q` before pushing changes.
 - Use the `-n/--iterations` flag (or `AGENTIC_SWARM_MAX_ITERATIONS`) to exercise
   longer or shorter workflows during development.
-- Logging is structured; set `AGENTIC_SWARM_LOG_LEVEL=DEBUG` to trace the
-  planner/coder/QA hand-offs and backoff behaviour.
+- Logging is structured; set `AGENTIC_SWARM_LOG_LEVEL=DEBUG` (or use
+  `--log-file`/`AGENTIC_SWARM_LOG_FILE`) to capture full planner/coder/QA
+  transcripts without overwhelming the console output.
 
 Feel free to file issues or PRs with additional workflow stages (e.g. git
 automation or PR generation). The current layout keeps planner/coder/QA logic

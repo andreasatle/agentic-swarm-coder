@@ -1,0 +1,26 @@
+Build a graphical Sudoku game in Python.
+
+Requirements:
+1. Create `src/sudoku.py` with:
+   - A `SudokuBoard` class that stores a 9×9 grid.
+   - Methods to:
+     • `load(puzzle: list[list[int]])` → load a puzzle (0 = empty).
+     • `is_valid(row, col, num)` → check if placing a number is legal.
+     • `place(row, col, num)` → place a number (raise ValueError if illegal).
+     • `is_complete()` → check if the board is fully and correctly solved.
+   - Optionally a `generate()` method to create a new valid puzzle.
+
+2. Add `src/gui.py` with a simple graphical interface (use `tkinter` or `pygame`):
+   - Display the Sudoku board in a 9×9 grid.
+   - Allow the user to click/select a cell and type a number.
+   - Highlight errors (illegal moves) in red.
+   - Provide a “New Game” button to load a fresh puzzle.
+   - Provide a “Check Solution” button to validate the board.
+
+3. Add a command-line entry in `src/cli.py`:
+   - `sudoku play` → launch the GUI.
+   - `sudoku solve <puzzle_file>` → read a puzzle from file and solve it in the console.
+
+4. Document usage in `README.md`, including screenshots or ASCII diagrams of the board.
+
+5. Update `pyproject.toml` with a console script entry: `sudoku`.
