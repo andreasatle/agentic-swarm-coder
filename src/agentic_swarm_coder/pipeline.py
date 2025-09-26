@@ -34,7 +34,7 @@ from .workflow.types import (
 
 LOGGER = get_logger("pipeline")
 MAX_AGENT_TURNS = 20
-MAX_ITERATIONS = 3
+MAX_ITERATIONS = 5
 
 
 async def execute_workflow(settings: RuntimeSettings) -> WorkflowResult:
