@@ -9,9 +9,9 @@ from typing import Any
 from agents import Agent, Runner
 from openai import RateLimitError
 
-from ..logging import get_logger
+from .logging import get_logger
 
-LOGGER = get_logger("workflow.backoff")
+LOGGER = get_logger("backoff")
 
 RATE_LIMIT_MAX_RETRIES = 5
 RATE_LIMIT_INITIAL_DELAY = 1.5

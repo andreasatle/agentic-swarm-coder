@@ -5,10 +5,10 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from ..logging import get_logger
-from ..schemas import QAReview
+from .logging import get_logger
+from .schemas import QAReview
 
-LOGGER = get_logger("workflow.qa")
+LOGGER = get_logger("qa")
 
 _QA_STATUS_PATTERN = re.compile(
     r"^\s*\**\s*OVERALL_STATUS:\s*(PASS|FAIL)\s*\**\s*$",

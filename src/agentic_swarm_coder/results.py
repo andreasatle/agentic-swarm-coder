@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from ..schemas import QAReview
+from .schemas import QAReview
 
 
 @dataclass(frozen=True)

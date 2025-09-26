@@ -1,4 +1,4 @@
-"""Factory helpers for constructing agents used in the workflow."""
+"""Factory helpers for constructing the planner/coder/QA agents."""
 
 from __future__ import annotations
 
@@ -6,25 +6,13 @@ from agents import Agent
 from agents.mcp import MCPServerStdio
 from agents.model_settings import ModelSettings
 
-from ..prompts import (
-    PLANNER_PROMPT,
-    build_coder_instruction,
-    build_coder_prompt,
-    build_planner_instruction,
-    build_qa_instruction,
-    build_qa_prompt,
-)
-from ..schemas import QAReview
+from .schemas import QAReview
+from .prompts import PLANNER_PROMPT
 
 __all__ = [
     "create_planner",
     "create_coder",
     "create_qa_reviewer",
-    "build_planner_instruction",
-    "build_coder_instruction",
-    "build_coder_prompt",
-    "build_qa_instruction",
-    "build_qa_prompt",
 ]
 
 

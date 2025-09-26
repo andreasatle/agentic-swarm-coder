@@ -7,10 +7,10 @@ from pathlib import Path
 
 import logging
 
-from ..logging import get_logger, log_event
-from .types import TestRunResult
+from .logging import get_logger, log_event
+from .results import TestRunResult
 
-LOGGER = get_logger("workflow.testing")
+LOGGER = get_logger("test_runner")
 
 
 async def run_pytest(workspace: Path) -> TestRunResult:
