@@ -52,11 +52,7 @@ class WorkspaceInitializer:
             return
 
         LOGGER.info("Initialising workspace project structure at %s", target)
-        if await self._try_uv_initialise():
-            LOGGER.info("Workspace initialised via uv project template.")
-            return
-
-        LOGGER.info("uv initialisation unavailable; creating minimal scaffold manually.")
+        LOGGER.info("Creating minimal scaffold (uv project template disabled).")
         self._write_minimal_scaffold()
 
     async def _try_uv_initialise(self) -> bool:
